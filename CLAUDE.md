@@ -35,6 +35,17 @@ The server starts on `127.0.0.1:8090` by default. Models lazy-initialize on firs
 - Page title ("ACE-Step"): `acestep/ui/custom_interface.py:55` (`<title>`)
 - API app title: `acestep/ui/custom_interface_routes.py:79` (FastAPI `title=` kwarg)
 
+## Git / GitHub
+
+This repo has **no remote configured by default**. To push:
+
+```bash
+git remote add origin https://github.com/krazycure/onus.git
+# Fix broken global URL rewrite rule first (converts git@ to https:// without .com):
+git config --global --unset 'url.https://.insteadof'
+git push -u origin main
+```
+
 ## Deployment to existing ACE-Step install
 
 Copy these files into `/home/admin/ACE-Step-1.5/`:
@@ -47,3 +58,9 @@ Then run:
 ```bash
 cd /home/admin/ACE-Step-1.5 && uv sync && uv run acestep-custom --port 8090
 ```
+
+## Development Workflow
+- **Git Safety:** Always check `git status` before big edits.
+- **Commits:** After completing a working feature, run `git add .` and `git commit -m "feat: [description]"`.
+- **Remote:** Push to GitHub after every major milestone.
+- **Rollback:** If a refactor fails or logic becomes circular, use the `/undo` command or `git reset --hard HEAD`.
