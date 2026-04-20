@@ -5,15 +5,11 @@ A plugin for [ACE-Step 1.5](https://github.com/ace-step/ACE-Step-1.5) that repla
 ## Installation (on top of existing ACE-Step install)
 
 ```bash
-# Copy these files into your existing ACE-Step install:
-#   acestep/constants.py          (modified version)
-#   acestep/inference.py          (modified version)
-#   acestep/llm_inference.py      (modified version)
-#   acestep/ui/custom_interface*.py  (all 6 files)
+# Run the installer, pointing to your ACE-Step directory:
+./install.sh /path/to/ACE-Step-1.5
 
-# Then run:
-uv sync
-uv run acestep-custom --port 8090
+# Then start the server:
+cd /path/to/ACE-Step-1.5 && uv sync && uv run acestep-custom --port 8090
 ```
 
 ## Files
