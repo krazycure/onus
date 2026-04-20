@@ -86,7 +86,7 @@ FRONTEND_BODY_HTML = r"""
 <div class="app">
     <!-- Top bar -->
     <div class="topbar">
-        <span class="brand">ACE-STEP</span>
+        <span class="brand">ONUS</span>
         <div class="workspace-bar" id="workspace-bar"></div>
         <div class="status" id="status-bar"><span class="dot"></span><span id="status-text">Not initialized</span></div>
     </div>
