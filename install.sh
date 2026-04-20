@@ -17,13 +17,13 @@ echo "Installing Onus custom interface into $TARGET ..."
 
 # Copy modified upstream modules
 for f in constants.py inference.py llm_inference.py; do
-    cp -n "$SCRIPT_DIR/acestep/$f" "$TARGET/acestep/$f"
+    cp -f "$SCRIPT_DIR/acestep/$f" "$TARGET/acestep/$f"
     echo "  -> acestep/$f"
 done
 
 # Copy all custom interface files
 for f in "$SCRIPT_DIR"/acestep/ui/custom_interface*.py; do
-    cp -n "$f" "$TARGET/$(basename $f)"
+    cp -f "$f" "$TARGET/$(basename $f)"
     echo "  -> $(basename $f)"
 done
 
