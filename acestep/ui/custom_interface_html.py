@@ -211,10 +211,27 @@ FRONTEND_BODY_HTML = r"""
             <!-- Cover strength (shown for Cover mode) -->
             <div class="field hidden" id="cover-controls-field">
                 <label class="section-label">Cover Settings</label>
-                <div class="field-row">
-                    <span style="font-size:11px;color:var(--text-2);width:90px;" title="What fraction of diffusion steps use the source audio's structure as guidance. 1.0 = all steps reference source (faithful cover). Lower values switch partway to text-only guidance, giving more creative freedom. 0.75 is a good starting point." style="margin:0;">Cover Strength</span>
-                    <input type="range" id="audio_cover_strength" min="0" max="1" step="0.05" value="0.75" style="flex:1;" oninput="document.getElementById('cover-strength-val').textContent=this.value">
-                    <span id="cover-strength-val" style="font-size:11px;color:var(--text-1);width:32px;text-align:right;font-family:'JetBrains Mono',monospace;">0.75</span>
+                <div class="strength-presets-grid" id="cover-strength-presets">
+                    <label class="preset-card cover-strength-preset-card" data-value="0.0" title="Style Transfer — full prompt influence, minimal source structure guidance. Best for changing timbre while keeping your own melody.">
+                        <input type="radio" name="cover_strength_preset" value="0.0" style="display:none;">
+                        <span class="preset-label">Style Transfer</span>
+                        <span class="preset-stars"><span class="stars-prompt" title="Prompt/style influence">★★★★★</span> <span class="stars-source" title="Source structure retention">☆☆☆☆☆</span></span>
+                    </label>
+                    <label class="preset-card cover-strength-preset-card" data-value="0.35" title="Remix — balance between prompt-driven creativity and source melody retention. Good for creative reinterpretations.">
+                        <input type="radio" name="cover_strength_preset" value="0.35" style="display:none;">
+                        <span class="preset-label">Remix</span>
+                        <span class="preset-stars"><span class="stars-prompt" title="Prompt/style influence">★★★☆☆</span> <span class="stars-source" title="Source structure retention">★★★☆☆</span></span>
+                    </label>
+                    <label class="preset-card cover-strength-preset-card selected" data-value="0.75" title="Faithful Cover — strong source structure guidance with some prompt influence. Best for covering a specific song with new vocals. Default.">
+                        <input type="radio" name="cover_strength_preset" value="0.75" checked style="display:none;">
+                        <span class="preset-label">Faithful Cover</span>
+                        <span class="preset-stars"><span class="stars-prompt" title="Prompt/style influence">★☆☆☆☆</span> <span class="stars-source" title="Source structure retention">★★★★★</span></span>
+                    </label>
+                    <label class="preset-card cover-strength-preset-card" data-value="0.85" title="Remaster — upload the same file for both source and reference to remaster your audio with higher quality or different processing.">
+                        <input type="radio" name="cover_strength_preset" value="0.85" style="display:none;">
+                        <span class="preset-label">Remaster</span>
+                        <span class="preset-stars"><span class="stars-prompt" title="Prompt influence">★☆☆☆☆</span> <span class="stars-source" title="Source retention">★★★★★</span></span>
+                    </label>
                 </div>
                 <label class="section-label">Creative Intent</label>
                 <div style="font-size:10px;color:var(--text-2);margin-bottom:6px;" title="Left (amber) = prompt/style influence, Right (blue) = source melody retention. Higher cover_noise_strength = more of the original tune retained.">Prompt vs Source Balance</div>
@@ -420,13 +437,51 @@ FRONTEND_BODY_HTML = r"""
             </div>
             <div class="accordion-body collapsed" id="adv-body">
                 <div class="adv-grid">
-                    <div class="field-row">
-                        <span style="font-size:11px;color:var(--text-2);width:50px;" title="Number of diffusion steps. More steps = higher quality but slower generation. 8 is a good default; try 16-32 for fine details." style="margin:0;">Steps</span>
-                        <input type="number" id="inference_steps" value="8" min="1" max="100" class="compact" style="width:70px;">
+                    <div class="strength-presets-grid" id="steps-presets">
+                        <span style="font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text-2);grid-column:1/-1;margin-bottom:2px;">Quality</span>
+                        <label class="preset-card steps-preset-card" data-value="4" title="Quick — 4 diffusion steps. Fastest generation, good for ideation and rough drafts. Lower quality but very fast feedback loop.">
+                            <input type="radio" name="inference_steps_preset" value="4" style="display:none;">
+                            <span class="preset-label">Quick</span>
+                            <span class="preset-stars"><span class="stars-source">⚡</span></span>
+                        </label>
+                        <label class="preset-card steps-preset-card selected" data-value="8" title="Standard — 8 diffusion steps. Balanced quality and speed. Recommended default for most generation tasks.">
+                            <input type="radio" name="inference_steps_preset" value="8" checked style="display:none;">
+                            <span class="preset-label">Standard</span>
+                            <span class="preset-stars"><span class="stars-source">★★★☆☆</span></span>
+                        </label>
+                        <label class="preset-card steps-preset-card" data-value="16" title="Detailed — 16 diffusion steps. Better detail and coherence. Worth the extra generation time for important tracks.">
+                            <input type="radio" name="inference_steps_preset" value="16" style="display:none;">
+                            <span class="preset-label">Detailed</span>
+                            <span class="preset-stars"><span class="stars-source">★★★★☆</span></span>
+                        </label>
+                        <label class="preset-card steps-preset-card" data-value="32" title="Maximum — 32 diffusion steps. Highest quality output. Longest generation time, best for final exports.">
+                            <input type="radio" name="inference_steps_preset" value="32" style="display:none;">
+                            <span class="preset-label">Maximum</span>
+                            <span class="preset-stars"><span class="stars-source">★★★★★</span></span>
+                        </label>
                     </div>
-                    <div class="field-row">
-                        <span style="font-size:11px;color:var(--text-2);width:50px;" title="Classifier-free guidance scale. Controls how closely the output follows your prompt. Higher = more faithful to text, but can sound harsh. 5-8 is typical range." style="margin:0;">Guidance</span>
-                        <input type="number" id="guidance_scale" value="7.0" step="0.1" min="0" max="20" class="compact" style="width:70px;">
+                    <div class="strength-presets-grid" id="guidance-presets">
+                        <span style="font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text-2);grid-column:1/-1;margin-bottom:2px;">Prompt Adherence</span>
+                        <label class="preset-card guidance-preset-card" data-value="4.0" title="Loose — low guidance (4.0). The model has more freedom to interpret your prompt creatively. Can produce surprising results but may diverge from your intent.">
+                            <input type="radio" name="guidance_preset" value="4.0" style="display:none;">
+                            <span class="preset-label">Loose</span>
+                            <span class="preset-stars"><span class="stars-prompt" title="Prompt adherence">☆☆☆☆☆</span></span>
+                        </label>
+                        <label class="preset-card guidance-preset-card selected" data-value="7.0" title="Balanced — medium guidance (7.0). Recommended default. Good balance between prompt adherence and musical creativity.">
+                            <input type="radio" name="guidance_preset" value="7.0" checked style="display:none;">
+                            <span class="preset-label">Balanced</span>
+                            <span class="preset-stars"><span class="stars-prompt" title="Prompt adherence">★★★☆☆</span></span>
+                        </label>
+                        <label class="preset-card guidance-preset-card" data-value="8.5" title="Tight — high guidance (8.5). Strong prompt adherence for precise control over the output. May introduce artifacts at very high values.">
+                            <input type="radio" name="guidance_preset" value="8.5" style="display:none;">
+                            <span class="preset-label">Tight</span>
+                            <span class="preset-stars"><span class="stars-prompt" title="Prompt adherence">★★★★☆</span></span>
+                        </label>
+                        <label class="preset-card guidance-preset-card" data-value="9.0" title="Strict — very high guidance (9.0). Maximum prompt following. Use when the model consistently ignores key elements of your prompt. Risk: harsh or unnatural output at extreme values.">
+                            <input type="radio" name="guidance_preset" value="9.0" style="display:none;">
+                            <span class="preset-label">Strict</span>
+                            <span class="preset-stars"><span class="stars-prompt" title="Prompt adherence">★★★★★</span></span>
+                        </label>
                     </div>
                     <div class="field-row">
                         <span style="font-size:11px;color:var(--text-2);width:50px;" title="Random seed for reproducibility. Use -1 (with Random checked) for a new seed each time. Same seed + same prompt = identical output." style="margin:0;">Seed</span>
@@ -445,7 +500,7 @@ FRONTEND_BODY_HTML = r"""
             </div>
 
             <!-- Runtime toggles -->
-            <div class="toggle-row">
+            <div class="toggle-row" id="thinking-row">
                 <span class="toggle-label" title="Enable LLM reasoning to plan lyrics, structure, and metadata before generation. Uncheck for faster text2music-only mode with no planning overhead." style="margin:0;">Think (chain of thought)</span>
                 <label class="toggle"><input type="checkbox" id="thinking" checked><span class="slider"></span></label>
             </div>

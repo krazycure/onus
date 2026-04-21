@@ -299,8 +299,8 @@ async function doGenerate() {
             caption,
             task_type: taskType,
             lyrics: document.getElementById("instrumental-toggle").checked ? "[Instrumental]" : (document.getElementById("lyrics").value.trim() || "[Instrumental]"),
-            inference_steps: parseInt(document.getElementById("inference_steps").value),
-            guidance_scale: parseFloat(document.getElementById("guidance_scale").value),
+            inference_steps: getInferenceSteps(),
+            guidance_scale: getGuidanceScale(),
             seed: parseInt(document.getElementById("seed").value),
             batch_size: Math.max(1, Math.min(8, parseInt(document.getElementById("batch-custom").value) || 1)),
             duration: (document.getElementById("duration-custom").value.trim() ? parseFloat(document.getElementById("duration-custom").value) : null),
@@ -316,7 +316,7 @@ async function doGenerate() {
 
         // Cover-mode specific params
         if (currentMode === "Cover") {
-            body.audio_cover_strength = parseFloat(document.getElementById("audio_cover_strength").value);
+            body.audio_cover_strength = parseFloat(currentCoverStrengthPreset || "0.75");
             body.cover_noise_strength = isCoverNoiseCustom() ? parseFloat(document.getElementById("cover_noise_strength").value) : parseFloat(currentCoverNoisePreset);
         }
 
@@ -360,6 +360,18 @@ async function doGenerate() {
         if (currentMode === "Sound Stack" && !srcAudioPath) {
             setStatus("error", "Please upload a source audio file before generating in Sound Stack mode.");
             return;
+        }
+
+        // Cover mode validation: requires both source AND reference audio
+        if (currentMode === "Cover") {
+            if (!srcAudioPath) {
+                setStatus("error", "Please upload a source audio file before generating in Cover mode.");
+                return;
+            }
+            if (!refAudioPath) {
+                setStatus("error", "Please upload a reference audio file before generating in Cover mode.");
+                return;
+            }
         }
 
         const resp = await fetch("/api/generate", {
@@ -581,9 +593,17 @@ function reuseResult(card) {
     const trackNameEl = document.getElementById("track-name");
     if (trackNameEl && params.track_name) trackNameEl.value = params.track_name;
 
-    // Settings
-    if (params.inference_steps != null) document.getElementById("inference_steps").value = params.inference_steps;
-    if (params.guidance_scale != null) document.getElementById("guidance_scale").value = params.guidance_scale;
+    // Settings — steps/guidance restored as preset cards
+    if ("steps_preset" in params) {
+        currentStepsPreset = String(params.steps_preset);
+        const card = document.querySelector(`.steps-preset-card[data-value="${currentStepsPreset}"]`);
+        if (card) highlightSteps(card);
+    }
+    if ("guidance_preset" in params) {
+        currentGuidancePreset = String(params.guidance_preset);
+        const card = document.querySelector(`.guidance-preset-card[data-value="${currentGuidancePreset}"]`);
+        if (card) highlightGuidance(card);
+    }
     if (params.seed != null) document.getElementById("seed").value = params.seed;
     if ("use_random_seed" in params) document.getElementById("use_random_seed").checked = params.use_random_seed;
     if (params.batch_size != null) document.getElementById("batch-custom").value = params.batch_size;
@@ -597,6 +617,13 @@ function reuseResult(card) {
     // Toggles and format
     if ("thinking" in params) document.getElementById("thinking").checked = params.thinking;
     if (params.audio_format) document.getElementById("output_format").value = params.audio_format;
+
+    // Cover strength preset restore
+    if ("cover_strength_preset" in params) {
+        currentCoverStrengthPreset = String(params.cover_strength_preset);
+        const card = document.querySelector(`.cover-strength-preset-card[data-value="${currentCoverStrengthPreset}"]`);
+        if (card) highlightCoverStrength(card);
+    }
 
     // Scroll to top so user sees the populated fields
     window.scrollTo({ top: 0, behavior: "smooth" });

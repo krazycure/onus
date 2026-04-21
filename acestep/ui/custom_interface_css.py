@@ -70,7 +70,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-0); color: var
 .divider:hover, .divider.dragging { background: var(--accent); opacity: .3; }
 
 /* ── Left panel: controls ── */
-.controls { width: 420px; flex-shrink: 0; padding: 12px 14px; background: var(--bg-1); border-right: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; gap: 8px; scrollbar-width: thin; }
+.controls { width: 420px; flex-shrink: 0; padding: 12px 14px; background: var(--bg-1); border-right: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; gap: 8px; scrollbar-width: thin; scrollbar-gutter: stable; }
 .controls::-webkit-scrollbar { width: 6px; }
 .controls::-webkit-scrollbar-track { background: transparent; }
 .controls::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
@@ -439,4 +439,14 @@ audio { width: 100%; margin-top: 6px; height: 32px; filter: invert(0.95); }
     max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;
     font-family: 'JetBrains Mono', monospace, sans-serif;
 }
+
+/* ── Disabled toggle row (Cover mode) ── */
+.toggle-row.disabled { opacity: 0.35; pointer-events: none; user-select: none; }
+.toggle-row.disabled input[type="checkbox"] { pointer-events: none; cursor: not-allowed; }
+
+/* ── Cover strength, steps, guidance preset cards shared styles ── */
+.strength-presets-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px; }
+.cover-strength-preset-card .preset-label { font-size: 10px; color: var(--text-1); }
+.steps-preset-card .preset-label { font-size: 10px; color: var(--text-1); }
+.guidance-preset-card .preset-label { font-size: 10px; color: var(--text-1); }
 """

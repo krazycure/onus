@@ -57,7 +57,7 @@ function isPureBaseModel(configPath) {
 
 const MODE_TITLES = {
     "Advanced": "Full manual control over caption, lyrics, BPM, key, and all generation parameters. Use when you know exactly what you want.",
-    "Cover": "Generate new music using a reference audio for timbre/style transfer. Upload reference + source audio to control what gets generated.",
+    "Cover": "Reference audio = timbre (voice/instrument tone). Source audio = melody & rhythm. Uploading the same file for both is a remaster request.",
     "Edit": "Open your source audio in an editor to modify specific regions. Choose intensity (Subtle Blend/Moderate Blend/Full Replace) and set start/end times. Prompt drives the regenerated content.",    "Inspiration": "Use source audio as a vibe reference to generate entirely new music in the same style. Choose a Focus (instrument/stem) and Style, then write a prompt for what you want.",
     "Sound Stack": "Start with a vocal or instrument layer and build a full track on top of it. Add drums, bass, harmonies — anything you can imagine. Upload your starting layer as reference audio.",
     "Complete": "Upload a single vocal or instrument track. The model generates the full accompaniment around it — drums, bass, harmonies, everything else.",
@@ -174,14 +174,6 @@ function randomize() {
     const dur = Math.round(90 + Math.random() * 210);
     document.getElementById("duration-custom").value = dur;
 
-    // Steps: 4–32
-    const steps = [4,6,8,12,16,24,32][Math.floor(Math.random() * 7)];
-    document.getElementById("inference_steps").value = steps;
-
-    // Guidance: 3.0–10.0
-    const guidance = (3 + Math.random() * 7).toFixed(1);
-    document.getElementById("guidance_scale").value = guidance;
-
     // Seed: random positive integer
     document.getElementById("seed").value = String(Math.floor(Math.random() * 999999));
 
@@ -209,12 +201,6 @@ function resetToDefaults() {
 
     // Batch → 1
     document.getElementById("batch-custom").value = "1";
-
-    // Steps → 8 (turbo default)
-    document.getElementById("inference_steps").value = "8";
-
-    // Guidance → 7.0
-    document.getElementById("guidance_scale").value = "7.0";
 
     // Seed → -1, Random checked
     document.getElementById("seed").value = "-1";
@@ -267,6 +253,13 @@ function updateVisibility() {
 
     // Interpret button: only visible in Inspiration mode
     document.getElementById("interpret-btn").classList.toggle("hidden", currentMode !== "Inspiration");
+
+    // Hide thinking toggle in Cover mode (LLM never invoked for Cover)
+    const thinkingRow = document.getElementById("thinking-row");
+    if (thinkingRow) {
+        const isCover = currentMode === "Cover";
+        thinkingRow.classList.toggle("hidden", isCover);
+    }
 
     // Dynamic labels for Edit vs Sound Stack modes
     if (currentMode === "Sound Stack") {

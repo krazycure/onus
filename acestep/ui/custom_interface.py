@@ -578,6 +578,7 @@ async def handle_generate(data: dict[str, Any]) -> dict[str, Any]:
             "use_random_seed": use_random_seed,
             "audio_format": audio_format,
             "track_name": track_name if track_name and str(track_name).strip() else None,
+            "cover_strength_preset": params.audio_cover_strength,
         },
     }
 

@@ -4,8 +4,8 @@ function getSettingsFields() {
         mode: currentMode,
         caption: document.getElementById("caption").value,
         lyrics: document.getElementById("lyrics").value,
-        inference_steps: document.getElementById("inference_steps").value,
-        guidance_scale: document.getElementById("guidance_scale").value,
+        steps_preset: currentStepsPreset,
+        guidance_preset: currentGuidancePreset,
         seed: document.getElementById("seed").value,
         use_random_seed: document.getElementById("use_random_seed").checked,
         batch_size: document.getElementById("batch-custom").value,
@@ -15,7 +15,7 @@ function getSettingsFields() {
         timesignature: getCustomValue("time", "timesignature-select"),
         thinking: document.getElementById("thinking").checked,
         instrumental: document.getElementById("instrumental-toggle").checked,
-        cover_strength: document.getElementById("audio_cover_strength").value,
+        cover_strength_preset: currentCoverStrengthPreset,
         cover_noise_preset: currentCoverNoisePreset,
         cover_noise_custom: isCoverNoiseCustom() ? parseFloat(document.getElementById("cover_noise_strength").value) : null,
         inspiration_strength: document.getElementById("inspiration_strength")?.value,
@@ -51,8 +51,18 @@ function loadSettings() {
         // Restore fields
         if (s.caption != null) document.getElementById("caption").value = s.caption;
         if (s.lyrics != null) document.getElementById("lyrics").value = s.lyrics;
-        if (s.inference_steps !== undefined) document.getElementById("inference_steps").value = s.inference_steps;
-        if (s.guidance_scale !== undefined) document.getElementById("guidance_scale").value = s.guidance_scale;
+        // Steps preset restore (backward compat: old saved inference_steps ignored)
+        if (s.steps_preset !== undefined) {
+            currentStepsPreset = String(s.steps_preset);
+            const card = document.querySelector(`.steps-preset-card[data-value="${currentStepsPreset}"]`);
+            if (card) highlightSteps(card);
+        }
+        // Guidance preset restore
+        if (s.guidance_preset !== undefined) {
+            currentGuidancePreset = String(s.guidance_preset);
+            const card = document.querySelector(`.guidance-preset-card[data-value="${currentGuidancePreset}"]`);
+            if (card) highlightGuidance(card);
+        }
         if (s.seed !== undefined) document.getElementById("seed").value = s.seed;
         if ("use_random_seed" in s) document.getElementById("use_random_seed").checked = s.use_random_seed;
         if (s.batch_size !== undefined) document.getElementById("batch-custom").value = s.batch_size;
@@ -67,7 +77,19 @@ function loadSettings() {
                 document.getElementById("lyrics").value = "[Instrumental]";
             }
         }
-        if (s.cover_strength !== undefined) document.getElementById("audio_cover_strength").value = s.cover_strength;
+        // Cover strength preset restore (backward compat: old cover_strength slider value ignored)
+        if (s.cover_strength_preset !== undefined) {
+            currentCoverStrengthPreset = String(s.cover_strength_preset);
+            const card = document.querySelector(`.cover-strength-preset-card[data-value="${currentCoverStrengthPreset}"]`);
+            if (card) highlightCoverStrength(card);
+        } else if (s.cover_strength !== undefined) {
+            // Fallback: old slider value — map to nearest preset
+            const val = parseFloat(s.cover_strength);
+            if (val < 0.1) currentCoverStrengthPreset = "0.0";
+            else if (val < 0.55) currentCoverStrengthPreset = "0.35";
+            else if (val < 0.8) currentCoverStrengthPreset = "0.75";
+            else currentCoverStrengthPreset = "0.85";
+        }
         if (s.cover_noise_preset !== undefined) {
             currentCoverNoisePreset = String(s.cover_noise_preset);
             const presetCard = document.querySelector(`.preset-card[data-value="${currentCoverNoisePreset}"]`);
@@ -157,9 +179,14 @@ fetch("/api/config").then(r => r.json()).then(data => {
 // ── Load saved settings on startup ──
 loadSettings();
 
-// ── Cover noise preset cards ──
+// ── Cover noise preset cards (Creative Intent: prompt vs source balance) ──
 function highlightPreset(card) {
-    document.querySelectorAll(".preset-card").forEach(c => c.classList.remove("selected"));
+    const container = card.closest(".strength-presets-grid, .cover-noise-presets");
+    if (container) {
+        container.querySelectorAll(".preset-card").forEach(c => c.classList.remove("selected"));
+    } else {
+        document.querySelectorAll(".preset-card").forEach(c => c.classList.remove("selected"));
+    }
     card.classList.add("selected");
 }
 
@@ -171,8 +198,88 @@ function highlightPreset(card) {
         if (!card) return;
         currentCoverNoisePreset = card.dataset.value;
         highlightPreset(card);
+        saveSettings();
     });
 })();
+
+// ── Cover strength preset cards ──
+let currentCoverStrengthPreset = "0.75";
+
+function highlightCoverStrength(card) {
+    const container = card.closest(".strength-presets-grid");
+    if (container) {
+        container.querySelectorAll(".preset-card").forEach(c => c.classList.remove("selected"));
+    } else {
+        document.querySelectorAll(".cover-strength-preset-card").forEach(c => c.classList.remove("selected"));
+    }
+    card.classList.add("selected");
+}
+
+(function() {
+    const container = document.getElementById("cover-strength-presets");
+    if (!container) return;
+    container.addEventListener("click", (e) => {
+        const card = e.target.closest(".cover-strength-preset-card");
+        if (!card) return;
+        currentCoverStrengthPreset = card.dataset.value;
+        highlightCoverStrength(card);
+        saveSettings();
+    });
+})();
+
+// ── Steps preset cards ──
+let currentStepsPreset = "8";
+
+function highlightSteps(card) {
+    const container = card.closest(".strength-presets-grid");
+    if (container) {
+        container.querySelectorAll(".preset-card").forEach(c => c.classList.remove("selected"));
+    } else {
+        document.querySelectorAll(".steps-preset-card").forEach(c => c.classList.remove("selected"));
+    }
+    card.classList.add("selected");
+}
+
+(function() {
+    const container = document.getElementById("steps-presets");
+    if (!container) return;
+    container.addEventListener("click", (e) => {
+        const card = e.target.closest(".steps-preset-card");
+        if (!card) return;
+        currentStepsPreset = card.dataset.value;
+        highlightSteps(card);
+        saveSettings();
+    });
+})();
+
+function getInferenceSteps() { return parseInt(currentStepsPreset, 10); }
+
+// ── Guidance preset cards ──
+let currentGuidancePreset = "7.0";
+
+function highlightGuidance(card) {
+    const container = card.closest(".strength-presets-grid");
+    if (container) {
+        container.querySelectorAll(".preset-card").forEach(c => c.classList.remove("selected"));
+    } else {
+        document.querySelectorAll(".guidance-preset-card").forEach(c => c.classList.remove("selected"));
+    }
+    card.classList.add("selected");
+}
+
+(function() {
+    const container = document.getElementById("guidance-presets");
+    if (!container) return;
+    container.addEventListener("click", (e) => {
+        const card = e.target.closest(".guidance-preset-card");
+        if (!card) return;
+        currentGuidancePreset = card.dataset.value;
+        highlightGuidance(card);
+        saveSettings();
+    });
+})();
+
+function getGuidanceScale() { return parseFloat(currentGuidancePreset); }
 
 function isCoverNoiseCustom() {
     return document.getElementById("cover-noise-custom") && !document.getElementById("cover-noise-custom").classList.contains("hidden");
@@ -195,6 +302,8 @@ function showCoverNoiseCustom(value) {
     document.getElementById("cover_noise_strength").value = value;
     // Swap toggle buttons: hide Custom, show Return to Presets
     document.getElementById("cover-noise-custom-btn").classList.add("hidden");
+    const returnBtn = document.querySelector("#cover-noise-custom .cover-noise-toggle-btn");
+    if (returnBtn) returnBtn.classList.remove("hidden");
 }
 
 function hideCoverNoiseCustom() {
@@ -204,6 +313,8 @@ function hideCoverNoiseCustom() {
     if (presetsDiv) presetsDiv.classList.remove("hidden");
     // Swap toggle buttons: show Custom, hide Return to Presets
     document.getElementById("cover-noise-custom-btn").classList.remove("hidden");
+    const returnBtn = document.querySelector("#cover-noise-custom .cover-noise-toggle-btn");
+    if (returnBtn) returnBtn.classList.add("hidden");
 }
 
 function resetCoverNoiseToPresets() {
