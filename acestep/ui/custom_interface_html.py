@@ -22,6 +22,7 @@ FRONTEND_BODY_HTML = r"""
             <select id="init-config_path">
                 <option value="acestep-v15-sft" selected>acestep-v15-sft (recommended)</option>
                 <option value="acestep-v15-turbo">acestep-v15-turbo</option>
+                <option value="acestep-v15-base">acestep-v15-base</option>
                 <option value="acestep-v15-xl-turbo">acestep-v15-xl-turbo</option>
             </select>
         </div>

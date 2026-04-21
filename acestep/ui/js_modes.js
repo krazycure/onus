@@ -1,4 +1,4 @@
-const MODES = ["Advanced", "Cover", "Edit", "Inspiration", "Sound Stack"];
+const MODES = ["Advanced", "Cover", "Edit", "Inspiration", "Sound Stack", "Complete"];
 let currentMode = "Advanced";
 let modelsReady = false;
 let llmReady = false;
@@ -52,6 +52,7 @@ const MODE_TITLES = {
     "Cover": "Generate new music using a reference audio for timbre/style transfer. Upload reference + source audio to control what gets generated.",
     "Edit": "Open your source audio in an editor to modify specific regions. Choose intensity (Subtle Blend/Moderate Blend/Full Replace) and set start/end times. Prompt drives the regenerated content.",    "Inspiration": "Use source audio as a vibe reference to generate entirely new music in the same style. Choose a Focus (instrument/stem) and Style, then write a prompt for what you want.",
     "Sound Stack": "Start with a vocal or instrument layer and build a full track on top of it. Add drums, bass, harmonies — anything you can imagine. Upload your starting layer as reference audio.",
+    "Complete": "Upload a single vocal or instrument track. The model generates the full accompaniment around it — drums, bass, harmonies, everything else.",
 };
 const pillsEl = document.getElementById("mode-pills");
 MODES.forEach(mode => {
@@ -204,14 +205,14 @@ function onLyricsInput() {
 // ── Mode pills / visibility ────────────────────────────────────────────────────
 function updateVisibility() {
     // Lyrics: shown for all modes except Inspiration and Sound Stack (per Gradio design)
-    const showLyrics = currentMode !== "Inspiration" && currentMode !== "Sound Stack";
-    const showSrcAudio = ["Cover", "Edit", "Inspiration", "Sound Stack"].includes(currentMode);
+    const showLyrics = currentMode !== "Inspiration" && currentMode !== "Sound Stack" && currentMode !== "Complete";
+    const showSrcAudio = ["Cover", "Edit", "Inspiration", "Sound Stack", "Complete"].includes(currentMode);
     const showRefAudio = ["Cover", "Edit", "Sound Stack"].includes(currentMode);
     const showCoverControls = currentMode === "Cover";
     const showInspirationControls = currentMode === "Inspiration";
     const showCustom = currentMode === "Advanced" || currentMode === "Inspiration";
     const showEdit = currentMode === "Edit" || currentMode === "Sound Stack";
-    const showTrackSelect = currentMode === "Inspiration" || currentMode === "Sound Stack";
+    const showTrackSelect = currentMode === "Inspiration" || currentMode === "Sound Stack" || currentMode === "Complete";
 
     document.getElementById("lyrics-field").classList.toggle("hidden", !showLyrics);
     document.getElementById("src-audio-field").classList.toggle("hidden", !showSrcAudio);
@@ -241,12 +242,14 @@ function updateVisibility() {
         document.getElementById("repainting_end").title = "End time (in seconds) of the region to regenerate. Use -1 to extend to the end of the audio.";
     }
 
-    // Dynamic labels for track selector in Sound Stack vs Inspiration modes
+    // Dynamic labels for track selector in Sound Stack vs Inspiration vs Complete modes
     const trackSelectorLabel = document.getElementById("track-selector-label");
     if (currentMode === "Sound Stack") {
         if (trackSelectorLabel) trackSelectorLabel.textContent = "Layer";
     } else if (currentMode === "Inspiration" && trackSelectorLabel) {
         trackSelectorLabel.textContent = "Focus";
+    } else if (currentMode === "Complete" && trackSelectorLabel) {
+        trackSelectorLabel.textContent = "Instruments";
     }
 
     // Inspiration style preview descriptions
@@ -267,12 +270,14 @@ function updateVisibility() {
         }
     }
 
-    // Dynamic labels for track selector in Sound Stack vs Inspiration modes (tooltip)
+    // Dynamic labels for track selector in Sound Stack vs Inspiration vs Complete modes (tooltip)
     const trackSelector = document.getElementById("track-selector");
     if (currentMode === "Sound Stack" && trackSelector) {
         trackSelector.title = "Which layer to generate. 'All / Auto' lets the model decide generically. Specific instruments tell the model which one to add to your source audio.";
     } else if (currentMode === "Inspiration" && trackSelector) {
         trackSelector.title = "Which instrument/stem to isolate. 'All / Auto' lets the model decide generically. Specific instruments tell the model which one to generate from your source audio.";
+    } else if (currentMode === "Complete" && trackSelector) {
+        trackSelector.title = "Instruments to include in the accompaniment. 'All / Auto' lets the model decide. Specific instruments add them on top of your source audio.";
     }
 
     // Update approach label for Edit mode only (in Sound Stack it stays as "Approach")

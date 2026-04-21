@@ -186,7 +186,7 @@ async function doGenerate() {
     try {
         // Map UI mode names to backend task_type values.
         // Note: "Inspiration" → "extract", "Sound Stack" → "lego" (backend duration-locking set).
-        const taskTypeMap = { Advanced: "text2music", Cover: "cover", Edit: "repaint", Inspiration: "inspiration", ["Sound Stack"]: "lego" };
+        const taskTypeMap = { Advanced: "text2music", Cover: "cover", Edit: "repaint", Inspiration: "inspiration", ["Sound Stack"]: "lego", Complete: "complete" };
         const taskType = taskTypeMap[currentMode] || currentMode.toLowerCase();
         const body = {
             caption,
@@ -312,6 +312,7 @@ function resultAccentClass() {
         case "Simple": case "Advanced": case "Inspiration": return "accent-inspiration"; // teal — vibe reference + prompt
         case "Cover": return "accent-source";          // blue  — reference audio
         case "Edit": return "accent-edit";             // green — edit region
+        case "Complete": return "accent-track"; // purple — single track → full accompaniment
         case "Sound Stack": return "accent-stack";         // amber — layer building
         default: return "";
     }
@@ -445,7 +446,7 @@ function reuseResult(card) {
 
     // Mode tab — restore first so the right controls become visible before populating values
     if (params.task_type) {
-        const modeMap = {"text2music": "Advanced", "cover": "Cover", "repaint": "Edit", "extract": "Inspiration", "lego": "Sound Stack"};
+        const modeMap = {"text2music": "Advanced", "cover": "Cover", "repaint": "Edit", "extract": "Inspiration", "lego": "Sound Stack", "complete": "Complete"};
         const mode = modeMap[params.task_type];
         if (mode) setMode(mode);
     }
