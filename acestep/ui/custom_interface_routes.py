@@ -436,6 +436,7 @@ async def lm_enhance(req: dict):
     caption = req.get("caption", "").strip()
     lyrics = req.get("lyrics", "").strip()
     mode = req.get("mode", "enhance")  # "enhance" or "lyrics"
+    task_type = req.get("task_type", "")
 
     if not caption and not lyrics:
         return JSONResponse(
@@ -443,6 +444,8 @@ async def lm_enhance(req: dict):
             status_code=400,
         )
 
+    # System prompts dict. Use a restrained version for Complete mode to prevent
+    # the LLM from inventing instruments/effects not in the user's intent.
     system_prompts = {
         "enhance": (
             "You are a creative writing assistant for music generation. "
@@ -456,8 +459,25 @@ async def lm_enhance(req: dict):
             "Include structural section tags like [Verse], [Chorus], [Bridge]. "
             "Return ONLY the lyrics — no labels, no explanations."
         ),
+        # Complete mode: don't over-expand. The user provides source audio and
+        # wants DiT to complete it. Over-expanding adds instruments the model
+        # will try to generate that weren't in the original intent.
+        "complete": (
+            "You are a music production assistant for a 'Complete' task mode where "
+            "the user has provided source audio and wants the AI to add missing tracks. "
+            "Rewrite the user's input into a concise, focused musical description. "
+            "Preserve the original intent exactly — do NOT invent new instruments, "
+            "effects, or elements that weren't mentioned or strongly implied. "
+            "Keep it brief and style-focused (genre, mood, tempo feel). "
+            "Return ONLY the enhanced text — no labels, no explanations."
+        ),
     }
-    system_prompt = system_prompts.get(mode, system_prompts["enhance"])
+
+    # Select system prompt based on task type for Complete mode.
+    if task_type == "complete" and mode == "enhance":
+        system_prompt = system_prompts["complete"]
+    else:
+        system_prompt = system_prompts.get(mode, system_prompts["enhance"])
 
     def _do_enhance():
         messages = [

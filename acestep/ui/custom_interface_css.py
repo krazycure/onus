@@ -94,6 +94,8 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-0); color: var
 .mode-pill:hover { background: var(--bg-3); }
 .mode-pill.active { background: var(--text-0); color: var(--bg-0); font-weight: 600; }
 .mode-pill.pill-disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
+/* Complete mode hidden — upstream bug (#803, #1088). Remove this rule to re-enable. */
+.mode-pill-complete { display: none !important; }
 
 /* Cover noise preset cards */
 .cover-noise-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px; }

@@ -75,6 +75,7 @@ function renderModePills() {
     for (const mode of MODES) {
         const btn = document.createElement("button");
         btn.className = "mode-pill" + (mode === currentMode ? " active" : "");
+        if (mode === "Complete") btn.classList.add("mode-pill-complete");
         btn.textContent = mode;
 
         if (MODE_TITLES[mode]) btn.title = MODE_TITLES[mode];

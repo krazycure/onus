@@ -327,6 +327,32 @@ async def handle_generate(data: dict[str, Any]) -> dict[str, Any]:
     timesignature = data.get("timesignature", "")
     vocal_language = data.get("vocal_language", "en")
     thinking = bool(data.get("thinking", True))
+
+    # CoT (Chain-of-Thought) flags — read from request or default based on
+    # thinking value. For Complete mode, force all to False below.
+    def _bool_val(key: str, default: bool = True) -> bool:
+        raw = data.get(key)
+        if raw is None:
+            return default
+        if isinstance(raw, bool):
+            return raw
+        return str(raw).lower() in ("true", "1")
+
+    use_cot_caption = _bool_val("use_cot_caption", True)
+    use_cot_metas = _bool_val("use_cot_metas", True)
+    use_cot_language = _bool_val("use_cot_language", True)
+
+    # Complete mode: disable thinking + all CoT flags. The LLM has no knowledge
+    # of complete_track_classes (that field only reaches DiT via instruction),
+    # so the LLM generates audio codes for its own full arrangement, and DiT
+    # tries to blend it with the source — producing a muddy multi-instrument
+    # mess. Forcing thinking=False sends caption + instruction straight to DiT,
+    # which is what Complete mode actually intends.
+    if task_type == "complete":
+        thinking = False
+        use_cot_caption = False
+        use_cot_metas = False
+        use_cot_language = False
     use_random_seed = bool(data.get("use_random_seed", True))
     audio_format = data.get("audio_format", "mp3")
     reference_audio = data.get("reference_audio_path") or data.get("reference_audio")
@@ -410,6 +436,9 @@ async def handle_generate(data: dict[str, Any]) -> dict[str, Any]:
         timesignature=str(timesignature).strip() if str(timesignature).strip() else "",
         vocal_language=vocal_language,
         thinking=thinking,
+        use_cot_caption=use_cot_caption,
+        use_cot_metas=use_cot_metas,
+        use_cot_language=use_cot_language,
         instruction=complete_instruction,
         global_caption=track_name if (task_type in ("lego", "complete")) and track_name and str(track_name).strip() else "",
         reference_audio=reference_audio if task_type != "text2music" else None,
