@@ -27,6 +27,17 @@ FRONTEND_BODY_HTML = r"""
             </select>
         </div>
 
+        <!-- Download progress for missing DiT models -->
+        <div id="dit-download-area" class="hidden">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <span id="dit-download-status" style="font-size:12px;color:var(--text-1);flex:1;"></span>
+                <button id="dit-download-btn" class="modal-skip-btn" style="padding:4px 12px;font-size:11px;">Download</button>
+            </div>
+            <div id="dit-download-progress" style="height:4px;border-radius:2px;background:var(--bg-3);overflow:hidden;">
+                <div id="dit-download-bar" style="height:100%;width:0%;background:var(--accent);transition:width .3s;"></div>
+            </div>
+        </div>
+
         <div class="field">
             <label class="section-label">Device</label>
             <select id="init-device">
@@ -189,6 +200,12 @@ FRONTEND_BODY_HTML = r"""
                     <input type="file" id="ref-audio" accept="audio/*" style="font-size:12px;flex:1;">
                     <button class="clear-btn source-clear" onclick="clearFileInput('ref-audio')" title="Clear file">×</button>
                 </div>
+            </div>
+
+            <!-- Complete mode: what tracks are present in the source audio -->
+            <div class="field hidden" id="complete-track-classes-field">
+                <label class="section-label" title="Tell the model which instruments/tracks are already in your source audio. This helps it avoid duplicating or conflicting with existing content." style="margin:0;">What's in my track?</label>
+                <div id="complete-track-classes" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px;"></div>
             </div>
 
             <!-- Cover strength (shown for Cover mode) -->

@@ -68,25 +68,31 @@ function renderModePills() {
     if (!pillsEl) return;
     pillsEl.innerHTML = "";
 
-    // Complete mode only available with pure base DiT model (per upstream Gradio).
+    // Complete mode requires a pure base DiT model (per upstream Gradio).
+    // Instead of hiding the pill, dim it and show why it's unavailable.
     const isBase = isPureBaseModel(document.getElementById("init-config_path")?.value || "");
-    const visibleModes = isBase ? MODES : MODES.filter(m => m !== "Complete");
 
-    // If current mode is Complete but not available, switch to Advanced.
-    if (currentMode === "Complete" && !isBase) {
-        currentMode = "Advanced";
-    }
-
-    for (const mode of visibleModes) {
+    for (const mode of MODES) {
         const btn = document.createElement("button");
         btn.className = "mode-pill" + (mode === currentMode ? " active" : "");
         btn.textContent = mode;
+
         if (MODE_TITLES[mode]) btn.title = MODE_TITLES[mode];
-        btn.onclick = () => setMode(mode);
+
+        // Dim Complete pill when base model is not selected.
+        if (mode === "Complete" && !isBase) {
+            btn.classList.add("pill-disabled");
+            btn.title += "\n\n⚠ Requires acestep-v15-base. Re-initialize with that model to use.";
+        }
+
+        btn.onclick = () => {
+            if (btn.classList.contains("pill-disabled")) return;
+            setMode(mode);
+        };
         pillsEl.appendChild(btn);
     }
 
-    // Re-sync visibility for the new pill set.
+    // Re-sync visibility for the pill set.
     updateVisibility();
 }
 
@@ -679,6 +685,7 @@ function triggerReinit() {
     m.querySelector(".modal-box")?.classList.remove("initing");
     _stopInitDots();
     m.classList.remove("hidden");
+    checkDitModelAndShowDownload();
 }
 
 function dismissModal() {

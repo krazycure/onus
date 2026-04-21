@@ -6,6 +6,113 @@ document.getElementById("prompt-lib-modal").onclick = (e) => {
     if (e.target.id === "prompt-lib-modal") dismissPromptLibModal();
 };
 
+// ── DiT model availability + on-demand download ────────────────────────────────
+let _ditModelsInstalled = new Set(); // track which models are installed
+
+function showDitDownloadArea() {
+    const area = document.getElementById("dit-download-area");
+    if (area) area.classList.remove("hidden");
+}
+function hideDitDownloadArea() {
+    const area = document.getElementById("dit-download-area");
+    if (area) area.classList.add("hidden");
+}
+function setDitDownloadProgress(pct, text) {
+    const bar = document.getElementById("dit-download-bar");
+    const status = document.getElementById("dit-download-status");
+    if (bar) bar.style.width = pct + "%";
+    if (status) status.textContent = text;
+}
+
+// Check selected DiT model and show download UI if missing.
+function checkDitModelAndShowDownload() {
+    const select = document.getElementById("init-config_path");
+    if (!select) return;
+    const modelId = select.value;
+
+    // If fetch hasn't completed yet, conservatively show download for non-default models.
+    if (!_ditFetchDone && _ditModelsInstalled.size === 0) {
+        if (modelId !== "acestep-v15-sft") {
+            showDitDownloadArea();
+            setDitDownloadProgress(0, "Checking availability...");
+        } else {
+            hideDitDownloadArea();
+        }
+        return;
+    }
+
+    if (_ditModelsInstalled.has(modelId)) {
+        hideDitDownloadArea();
+        return;
+    }
+    showDitDownloadArea();
+    setDitDownloadProgress(0, "Ready to download: " + modelId);
+}
+
+// Download a DiT model on demand.
+async function downloadDitModel(modelName) {
+    const btn = document.getElementById("dit-download-btn");
+    if (btn) btn.disabled = true;
+
+    try {
+        setDitDownloadProgress(10, "Starting download...");
+        const resp = await fetch("/api/dit-model/download", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({model: modelName}),
+        });
+
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({message: "Download failed"}));
+            setDitDownloadProgress(0, "Error: " + (err.message || "download failed"));
+            return false;
+        }
+
+        const data = await resp.json();
+        if (data.status === "complete") {
+            _ditModelsInstalled.add(modelName);
+            setDitDownloadProgress(100, "Done! — " + data.message);
+            setTimeout(hideDitDownloadArea, 2000);
+            return true;
+        } else {
+            setDitDownloadProgress(0, "Error: " + (data.message || "unknown error"));
+            return false;
+        }
+    } catch (e) {
+        setDitDownloadProgress(0, "Error: " + e.message);
+        return false;
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+// Fetch installed DiT models on page load.
+let _ditFetchDone = false;
+fetch("/api/dit-models/available").then(r => r.json()).then(data => {
+    for (const m of data.models) {
+        if (m.installed) _ditModelsInstalled.add(m.id);
+    }
+    _ditFetchDone = true;
+    checkDitModelAndShowDownload();
+}).catch(() => {}); // If API unavailable, assume all installed — graceful degradation.
+
+// Wire config_path select change → show download area if needed.
+(function() {
+    const select = document.getElementById("init-config_path");
+    if (select) select.addEventListener("change", checkDitModelAndShowDownload);
+})();
+
+// Wire download button click.
+(function() {
+    const btn = document.getElementById("dit-download-btn");
+    if (!btn) return;
+    btn.onclick = async () => {
+        const select = document.getElementById("init-config_path");
+        if (!select) return;
+        await downloadDitModel(select.value);
+    };
+})();
+
 // Shared init runner for the form button
 let _initStatusTimer = null;
 
@@ -228,10 +335,17 @@ async function doGenerate() {
             body.repaint_strength = parseFloat(document.getElementById("repaint_strength").value) || 0.5;
         }
 
-        // Track selector for Inspiration/Sound Stack modes
+        // Track selector for Inspiration/Sound Stack/Complete modes
         if (currentMode === "Inspiration" || currentMode === "Sound Stack" || currentMode === "Complete") {
             const trackVal = document.getElementById("track-selector")?.value;
             if (trackVal) body.track_name = trackVal;
+        }
+
+        // Complete mode: collect selected track classes
+        if (currentMode === "Complete") {
+            const trackClassesEl = document.querySelectorAll("#complete-track-classes input[type=checkbox]:checked");
+            const trackClasses = Array.from(trackClassesEl).map(cb => cb.value);
+            if (trackClasses.length > 0) body.complete_track_classes = trackClasses;
         }
 
         // Audio paths for non-text2music modes

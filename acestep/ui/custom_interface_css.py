@@ -93,6 +93,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-0); color: var
 .mode-pill { flex: 1; text-align: center; padding: 6px 4px; font-size: 11px; font-weight: 500; color: var(--text-1); background: transparent; border: none; border-radius: 6px; cursor: pointer; transition: all .12s; }
 .mode-pill:hover { background: var(--bg-3); }
 .mode-pill.active { background: var(--text-0); color: var(--bg-0); font-weight: 600; }
+.mode-pill.pill-disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
 
 /* Cover noise preset cards */
 .cover-noise-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px; }
@@ -116,6 +117,12 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-0); color: var
 .strength-preset-card.preset-full-replace.selected { border-color: #f5a623; background: linear-gradient(135deg, rgba(245,166,35,.08), rgba(79,195,247,.04)); box-shadow: 0 0 0 1px #f5a623; }
 .strength-preset-card.preset-full-replace .preset-label { color: #f5a623; }
 .preset-desc { font-size: 9px; color: var(--text-2); line-height: 1.3; }
+
+/* Complete mode track classes chips */
+.track-class-chip { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 11px; color: var(--text-1); background: var(--bg-2); transition: all .12s; user-select: none; }
+.track-class-chip:hover { border-color: #b388ff; background: var(--bg-3); }
+.track-class-chip input[type=checkbox] { display: none; }
+.track-class-chip:has(input:checked) { border-color: #b388ff; color: #b388ff; background: rgba(179, 136, 255, .08); }
 
 /* Waveform region selector */
 .waveform-container { position: relative; width: 100%; margin-bottom: 4px; border-radius: 6px; overflow: hidden; background: var(--bg-1); border: 1px solid var(--border); }
@@ -361,6 +368,14 @@ audio { width: 100%; margin-top: 6px; height: 32px; filter: invert(0.95); }
     margin-bottom: 6px;
 }
 .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+
+/* Model availability warning inside init modal */
+.model-warning {
+    font-size: 11px; color: #f5a623; background: rgba(245,166,35,.08);
+    border: 1px solid rgba(245,166,35,.25); border-radius: 6px;
+    padding: 6px 8px; margin-top: 2px; line-height: 1.4;
+}
+.model-warning.hidden { display: none; }
 
 /* Modal buttons */
 .modal-footer button {

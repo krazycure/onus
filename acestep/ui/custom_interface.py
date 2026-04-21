@@ -332,6 +332,14 @@ async def handle_generate(data: dict[str, Any]) -> dict[str, Any]:
     reference_audio = data.get("reference_audio_path") or data.get("reference_audio")
     src_audio = data.get("src_audio_path") or data.get("src_audio")
     track_name = data.get("track_name") or data.get("name")  # frontend sends "track_name" (js_results.js), legacy "name" kept for compat
+    complete_track_classes = data.get("complete_track_classes", [])  # Complete mode: tracks present in source audio
+
+    # Build instruction with track classes substitution for Complete mode.
+    # Without this, the prompt template has an unfilled {TRACK_CLASSES} placeholder
+    # which confuses the model and produces noisy/incoherent output.
+    complete_instruction = None
+    if task_type == "complete" and complete_track_classes:
+        complete_instruction = f'Complete the input track with {", ".join(complete_track_classes)}:'
 
     # Cover mode: default strength 0.75 (not Gradio's 1.0). During initial dev,
     # setting cover strength to 1.0 produced output identical to the input audio
@@ -402,6 +410,7 @@ async def handle_generate(data: dict[str, Any]) -> dict[str, Any]:
         timesignature=str(timesignature).strip() if str(timesignature).strip() else "",
         vocal_language=vocal_language,
         thinking=thinking,
+        instruction=complete_instruction,
         global_caption=track_name if (task_type in ("lego", "complete")) and track_name and str(track_name).strip() else "",
         reference_audio=reference_audio if task_type != "text2music" else None,
         src_audio=src_audio if task_type != "text2music" else None,

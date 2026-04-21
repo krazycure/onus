@@ -48,16 +48,26 @@ git push -u origin main
 
 ## Deployment to existing ACE-Step install
 
-Copy these files into `/home/admin/ACE-Step-1.5/`:
+Run `./deploy.sh` (default target: `$HOME/ACE-Step-1.5`). Unconditionally overwrites all files:
 - `acestep/constants.py`
 - `acestep/inference.py`
 - `acestep/llm_inference.py`
-- `acestep/ui/custom_interface*.py` (all 6 files)
+- `acestep/ui/custom_interface*.py` (5 UI files, excludes test file)
 
 Then run:
 ```bash
 cd /home/admin/ACE-Step-1.5 && uv sync && uv run acestep-custom --port 8090
 ```
+
+### Critical rule: never modify ACE-Step install directly
+
+**Always edit files in `/home/admin/onus` (the Onus source repo), never in `$HOME/ACE-Step-1.5`.** If a base component of the ACE-Step install needs to change (e.g., `constants.py`, `inference.py`, `llm_inference.py`):
+
+1. Copy the file into the Onus source tree (`acestep/<file>.py`)
+2. Edit it there
+3. Deploy via `./deploy.sh` which copies it over
+
+This prevents drift between source and deployed state, ensures changes are tracked in git, and avoids losing work when deploy.sh overwrites files. The same rule applies to any ACE-Step install file — never hand-edit anything under `$HOME/ACE-Step-1.5`.
 
 ## Development Workflow
 - **Git Safety:** Always check `git status` before big edits.
@@ -65,6 +75,11 @@ cd /home/admin/ACE-Step-1.5 && uv sync && uv run acestep-custom --port 8090
 - **Remote:** Push to GitHub after every major milestone.
 - **Rollback:** If a refactor fails or logic becomes circular, use the `/undo` command or `git reset --hard HEAD`.
 - **Complex string manipulation:** When you need to extract/manipulate content that contains triple-quotes (`"""`) or other complex delimiters, write a temp `.py` script file and run it — never try inline `-c` code or heredocs. The quoting boundaries will always conflict with the Python parser. Use `git show HEAD:file | sed -n 'X,Yp' > target_file` for line-range extraction as an alternative that avoids Python entirely.
+
+## GPU / Server constraints
+- Both Claude Code and ACE-Step run on the same GPU. **Never start or keep the server running while chatting/testing.** It starves the model of VRAM and blocks your ability to test.
+- After deploying (`./deploy.sh`), notify the user to restart the server and report test results back. Never try to be helpful by running it yourself — you cannot test while it is running, and keeping it alive is counter-productive.
+- When testing is needed: deploy → tell user to start server → wait for their report → kill any running process immediately after.
 
 ## File size guidelines
 
@@ -155,6 +170,12 @@ Complete mode (`task_type="complete"`) uploads a single-track source audio and a
 - BPM auto-detection from source audio via librosa (`custom_interface.py:_detect_bpm_from_audio()`) — graceful fallback to ACE-Step internal estimation if librosa unavailable
 - Track name → global_caption for both lego and complete tasks (fixed in this session)
 
+**What was added (session 2026-04-21):**
+- `complete_track_classes` checkbox group ("What's in my track?") — visible only in Complete mode, renders all 12 TRACK_NAMES as chips with purple accent (#b388ff). Uses CSS `:has()` for checked state styling.
+- JS wiring: `renderCompleteTrackClasses()`, `getCompleteTrackClasses()`, visibility toggle in `updateVisibility()`
+- Backend: reads `complete_track_classes` from request body, builds instruction string `"Complete the input track with {tracks}:"` to replace unfilled `{TRACK_CLASSES}` placeholder
+- deploy.sh updated to include JS chunk files (js_modes.js, js_results.js, js_settings.js) since they're read at import time by custom_interface_js.py
+
 **What upstream Gradio has that we're missing:**
 
 1. **`complete_track_classes` CheckboxGroup** — multi-select telling the model *which tracks are already present* in the source audio. This is the critical gap: without it, the model doesn't know what's there and may duplicate or ignore existing content.
@@ -165,12 +186,14 @@ Complete mode (`task_type="complete"`) uploads a single-track source audio and a
 
 3. **Auto-BPM forced for Complete in upstream?** — No. The upstream Gradio forces `auto_bpm=True` only for Extract/Lego modes (`mode_ui.py:105`). For Complete, the model is expected to analyze source audio internally. Our BPM detection is a bonus but not a substitute for `complete_track_classes`.
 
-**Why results are noisy/incoherent:**
-- Without `complete_track_classes`, the prompt template `"Complete the input track with {TRACK_CLASSES}:"` only tells the model *what to add*, not what's already there. The model may duplicate existing content or generate conflicting layers.
-- Single-track focus (our dropdown) is insufficient — Complete mode needs multi-select to describe the full source composition.
+**Why results are noisy/incoherent (tested 2026-04-21):**
+- User tested with drums as source + selected "drums" in track classes + chose "guitar" as target instrument. Expected: clean acoustic guitar over existing drums. Got: muddy multi-instrument output that doesn't match input at all.
+- **Hypothesis:** The instruction string substitution may not be working correctly, OR the model needs `complete_track_classes` passed as a separate field (not just in the instruction text). Upstream Gradio likely passes this as its own parameter to the generation pipeline, not just via prompt template substitution.
+- **Also:** Complete mode requires base DiT model per P1-B. Testing with SFT/turbo may produce poor results regardless of other fixes.
 
 **Next steps for Complete mode parity:**
-1. Add `complete_track_classes` checkbox group to Complete mode UI (P2 priority)
-2. Wire it through JS → backend → GenerationParams (new field needed in dataclass?)
-3. Test with base model (per P1-B: Complete requires base DiT, not SFT/turbo)
+1. Verify instruction string is actually reaching the ACE-Step generation pipeline (check upstream Gradio wiring)
+2. Check if upstream passes `complete_track_classes` as a separate GenerationParams field or just via prompt template
+3. Test with base model (per P1-B: Complete requires base DiT, not SFT/turbo) — this is likely the biggest factor in quality
 4. Consider adding a "What's in my track?" label/tooltip for UX clarity
+5. Add `complete_help_group` contextual help button

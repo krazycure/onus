@@ -11,6 +11,8 @@ Route Map:
     POST /api/workspace/create-> create_workspace()   Create workspace dir
     GET  /api/results         -> get_results()        Scan results for workspace
     DELETE /api/result/delete -> delete_result()      Delete result + sidecar
+    GET  /api/dit-models/available -> get_available_dit_models() List DiT models
+    POST /api/dit-model/download   -> download_dit_model()        Download DiT model
     GET  /api/lm-models/available -> get_available_lm_models() List LM models
     POST /api/lm-model/download   -> download_lm_model()       Download LM model
     POST /api/lm/enhance      -> lm_enhance()         Prompt enhancement via LM
@@ -281,6 +283,57 @@ _AVAILABLE_LM_MODELS = [
     {"id": "acestep-5Hz-lm-1.7B", "label": "1.7B (balanced, ~8GB VRAM)", "vram_gb": 8},
     {"id": "acestep-5Hz-lm-4B",   "label": "4B (best quality, ~12GB VRAM)", "vram_gb": 12},
 ]
+
+# Known DiT model config paths — used to populate the init dropdown and check availability.
+_AVAILABLE_DIT_MODELS = [
+    "acestep-v15-sft",
+    "acestep-v15-turbo",
+    "acestep-v15-base",
+    "acestep-v15-xl-turbo",
+]
+
+
+def _check_dit_installed(model_id: str) -> bool:
+    """Check if a DiT model directory exists in checkpoints."""
+    ckpt_dir = os.path.join(
+        os.path.dirname(__file__), "..", "..", "checkpoints"
+    )
+    return os.path.isdir(os.path.join(ckpt_dir, model_id))
+
+
+@app.get("/api/dit-models/available")
+async def get_available_dit_models():
+    """Return all known DiT models with installed status."""
+    results = []
+    for m in _AVAILABLE_DIT_MODELS:
+        results.append({"id": m, "installed": _check_dit_installed(m)})
+    return {"models": results}
+
+
+@app.post("/api/dit-model/download")
+async def download_dit_model(req: dict):
+    """Download a DiT model checkpoint. Runs blocking I/O in threadpool."""
+    model_name = req.get("model", "")
+    if not model_name:
+        return JSONResponse({"status": "error", "message": "No model specified"}, status_code=400)
+
+    from concurrent.futures import ThreadPoolExecutor
+    def _do_download():
+        from acestep.model_downloader import ensure_dit_model
+        ckpt_dir = os.path.join(
+            os.path.dirname(__file__), "..", "..", "checkpoints"
+        )
+        return ensure_dit_model(model_name=model_name, checkpoints_dir=Path(ckpt_dir))
+
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor() as pool:
+        success, msg = await loop.run_in_executor(pool, _do_download)
+
+    if success:
+        logger.info("[custom_ui] DiT model downloaded: %s", model_name)
+        return {"status": "complete", "message": msg}
+    else:
+        return JSONResponse({"status": "error", "message": msg}, status_code=500)
 
 
 def _check_lm_installed(model_id: str) -> bool:
