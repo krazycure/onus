@@ -144,8 +144,8 @@ FRONTEND_BODY_HTML = r"""
                 </div>
                 <div class="caption-row">
                     <textarea id="caption" class="theme-prompt caption-textarea" rows="4" placeholder="Describe the music you want to generate..." oninput="autoResizeTextarea(this, 10)"></textarea>
-                    <button id="interpret-btn" class="btn-interpret hidden" title="Interpret prompt with selected style preset (Inspiration mode only)" onclick="handleInterpret()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+                    <button id="interpret-btn" class="btn-interpret hidden" title="Interpret prompt with selected style preset" onclick="handleInterpret()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.3 5.7A8 8 0 0 0 4.7 12c0 2.4 1.1 4.6 2.8 6l.5.5V20a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-1.5l.5-.5A8 8 0 0 0 15.3 5.7z"/></svg>
                     </button>
                 </div>
                 <input type="text" id="track-name" placeholder="Track name (optional)" style="font-size:12px;width:100%;box-sizing:border-box;">
