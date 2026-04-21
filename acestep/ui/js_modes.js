@@ -46,7 +46,15 @@ function updateInspirationStylePreview() {
     if (slider) updateInspirationStrength(slider);
 })();
 
-// ── Mode pills ──
+// ── Mode pills ────────────────────────────────────────────────────────────────
+
+// Pure base model detection (mirrors upstream Gradio `is_pure_base_model`).
+// "base" must appear as a delimited token AND neither "sft" nor "turbo" may be present.
+function isPureBaseModel(configPath) {
+    const p = configPath.toLowerCase();
+    return /(^|[\/._-])base($|[\/._-])/.test(p) && !/sft/.test(p) && !/turbo/.test(p);
+}
+
 const MODE_TITLES = {
     "Advanced": "Full manual control over caption, lyrics, BPM, key, and all generation parameters. Use when you know exactly what you want.",
     "Cover": "Generate new music using a reference audio for timbre/style transfer. Upload reference + source audio to control what gets generated.",
@@ -54,15 +62,40 @@ const MODE_TITLES = {
     "Sound Stack": "Start with a vocal or instrument layer and build a full track on top of it. Add drums, bass, harmonies — anything you can imagine. Upload your starting layer as reference audio.",
     "Complete": "Upload a single vocal or instrument track. The model generates the full accompaniment around it — drums, bass, harmonies, everything else.",
 };
-const pillsEl = document.getElementById("mode-pills");
-MODES.forEach(mode => {
-    const btn = document.createElement("button");
-    btn.className = "mode-pill" + (mode === currentMode ? " active" : "");
-    btn.textContent = mode;
-    if (MODE_TITLES[mode]) btn.title = MODE_TITLES[mode];
-    btn.onclick = () => setMode(mode);
-    pillsEl.appendChild(btn);
-});
+
+function renderModePills() {
+    const pillsEl = document.getElementById("mode-pills");
+    if (!pillsEl) return;
+    pillsEl.innerHTML = "";
+
+    // Complete mode only available with pure base DiT model (per upstream Gradio).
+    const isBase = isPureBaseModel(document.getElementById("init-config_path")?.value || "");
+    const visibleModes = isBase ? MODES : MODES.filter(m => m !== "Complete");
+
+    // If current mode is Complete but not available, switch to Advanced.
+    if (currentMode === "Complete" && !isBase) {
+        currentMode = "Advanced";
+    }
+
+    for (const mode of visibleModes) {
+        const btn = document.createElement("button");
+        btn.className = "mode-pill" + (mode === currentMode ? " active" : "");
+        btn.textContent = mode;
+        if (MODE_TITLES[mode]) btn.title = MODE_TITLES[mode];
+        btn.onclick = () => setMode(mode);
+        pillsEl.appendChild(btn);
+    }
+
+    // Re-sync visibility for the new pill set.
+    updateVisibility();
+}
+
+// Initial render on page load (reads default from DOM).
+renderModePills();
+
+// Watch config_path changes — re-render pills when user switches models via reinit modal.
+const initConfigSelect = document.getElementById("init-config_path");
+if (initConfigSelect) initConfigSelect.addEventListener("change", renderModePills);
 
 function setMode(mode) {
     currentMode = mode;
@@ -213,10 +246,12 @@ function updateVisibility() {
     const showCustom = currentMode === "Advanced" || currentMode === "Inspiration";
     const showEdit = currentMode === "Edit" || currentMode === "Sound Stack";
     const showTrackSelect = currentMode === "Inspiration" || currentMode === "Sound Stack" || currentMode === "Complete";
+    const showCompleteClasses = currentMode === "Complete";
 
     document.getElementById("lyrics-field").classList.toggle("hidden", !showLyrics);
     document.getElementById("src-audio-field").classList.toggle("hidden", !showSrcAudio);
     document.getElementById("ref-audio-field").classList.toggle("hidden", !showRefAudio);
+    document.getElementById("complete-track-classes-field").classList.toggle("hidden", !showCompleteClasses);
     document.getElementById("cover-controls-field").classList.toggle("hidden", !showCoverControls);
     document.getElementById("inspiration-controls-field").classList.toggle("hidden", !showInspirationControls);
     document.getElementById("custom-fields").classList.toggle("hidden", !showCustom);
@@ -280,6 +315,11 @@ function updateVisibility() {
         trackSelector.title = "Instruments to include in the accompaniment. 'All / Auto' lets the model decide. Specific instruments add them on top of your source audio.";
     }
 
+    // Render Complete mode track classes checkboxes
+    if (currentMode === "Complete") {
+        renderCompleteTrackClasses();
+    }
+
     // Update approach label for Edit mode only (in Sound Stack it stays as "Approach")
     const repaintModeLabel = document.querySelector("#repaint-controls-field .field-row:nth-child(4) span");
     if (repaintModeLabel) {
@@ -315,6 +355,25 @@ function updateVisibility() {
     } else if (waveformContainer) {
         waveformContainer.classList.add("hidden");
     }
+}
+
+// ── Complete mode: track classes checkbox group ────────────────────────────────
+const COMPLETE_TRACK_CLASSES = ["vocals", "backing_vocals", "guitar", "bass", "drums", "percussion", "keyboard", "strings", "synth", "woodwinds", "brass", "fx"];
+
+function renderCompleteTrackClasses() {
+    const container = document.getElementById("complete-track-classes");
+    if (!container) return;
+    // Only populate once
+    if (container.dataset.rendered === "1") return;
+    container.dataset.rendered = "1";
+    container.innerHTML = COMPLETE_TRACK_CLASSES.map(name =>
+        `<label class="track-class-chip"><input type="checkbox" value="${name}"> ${name}</label>`
+    ).join("");
+}
+
+function getCompleteTrackClasses() {
+    const checked = document.querySelectorAll("#complete-track-classes input[type=checkbox]:checked");
+    return Array.from(checked).map(cb => cb.value);
 }
 
 // ── Bidirectional sync: strength slider ↔ preset cards ──
