@@ -229,7 +229,7 @@ async function doGenerate() {
         }
 
         // Track selector for Inspiration/Sound Stack modes
-        if (currentMode === "Inspiration" || currentMode === "Sound Stack") {
+        if (currentMode === "Inspiration" || currentMode === "Sound Stack" || currentMode === "Complete") {
             const trackVal = document.getElementById("track-selector")?.value;
             if (trackVal) body.track_name = trackVal;
         }

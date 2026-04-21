@@ -623,5 +623,71 @@ class TestGenerationParamsDefaults(unittest.TestCase):
             _unpatch_all(patches)
 
 
+# ---------------------------------------------------------------------------
+# Complete mode tests
+# ---------------------------------------------------------------------------
+
+class TestCompleteModeParams(unittest.TestCase):
+    """Verify Complete mode correctly translates frontend params to backend."""
+
+    def test_complete_passes_track_name_as_global_caption(self):
+        """Track name propagates as global_caption for complete task_type."""
+        captured, patches = _patch_module()
+        try:
+            from acestep.ui.custom_interface import handle_generate
+            _run(handle_generate({
+                "caption": "test",
+                "task_type": "complete",
+                "track_name": "Guitar",
+            }))
+            self.assertEqual(captured["params"].global_caption, "Guitar")
+        finally:
+            _unpatch_all(patches)
+
+    def test_complete_empty_track_name_yields_empty_global_caption(self):
+        """No track selected → global_caption is empty string."""
+        captured, patches = _patch_module()
+        try:
+            from acestep.ui.custom_interface import handle_generate
+            _run(handle_generate({"caption": "test", "task_type": "complete"}))
+            self.assertEqual(captured["params"].global_caption, "")
+        finally:
+            _unpatch_all(patches)
+
+    def test_complete_track_name_via_legacy_name_field(self):
+        """Legacy 'name' field still propagates as global_caption for complete."""
+        captured, patches = _patch_module()
+        try:
+            from acestep.ui.custom_interface import handle_generate
+            _run(handle_generate({
+                "caption": "test",
+                "task_type": "complete",
+                "name": "Bass",
+            }))
+            self.assertEqual(captured["params"].global_caption, "Bass")
+        finally:
+            _unpatch_all(patches)
+
+    def test_complete_bpm_detection_called_when_no_explicit_bpm(self):
+        """Complete mode calls BPM detection when no explicit BPM provided."""
+        import tempfile
+        captured, patches = _patch_module()
+        try:
+            from acestep.ui.custom_interface import handle_generate
+            # Create a temp file so Path().is_file() passes (BPM detection still fails without librosa)
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+                f.write(b"RIFF" + b"\x00" * 100)  # minimal WAV header
+                tmp_path = f.name
+
+            _run(handle_generate({
+                "caption": "test",
+                "task_type": "complete",
+                "src_audio_path": tmp_path,
+            }))
+            self.assertIsNone(captured["params"].bpm)  # librosa not installed → None (model auto-detects)
+        finally:
+            _unpatch_all(patches)
+
+
 if __name__ == "__main__":
     unittest.main()

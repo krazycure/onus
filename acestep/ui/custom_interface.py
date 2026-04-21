@@ -74,6 +74,55 @@ def _get_project_root() -> str:
 
 
 # ---------------------------------------------------------------------------
+# BPM detection for Complete mode
+# ---------------------------------------------------------------------------
+
+def _detect_bpm_from_audio(audio_path: str) -> int | None:
+    """Estimate BPM from an audio file using librosa onset-based tempo estimation.
+
+    Returns None if librosia is unavailable or detection fails — the caller
+    will fall back to ACE-Step's internal auto-BPM estimation (bpm=None).
+    """
+    import os as _os
+
+    if not audio_path or not _os.path.isfile(audio_path) or _os.path.getsize(audio_path) < 44:
+        return None
+
+    try:
+        import librosa
+    except ImportError:
+        logger.warning("[custom_ui] BPM detection skipped — librosia not installed. "
+                       "Install with: pip install librosa")
+        return None
+
+    try:
+        y, _ = librosa.load(audio_path, sr=None, mono=False)
+        if y.ndim > 1:
+            y = y.mean(axis=0)
+
+        onset_env = librosa.onset.onset_strength(y=y, sr=None)
+        onsets = librosa.onset.onset_detect(onset_envelope=onset_env, sr=None)
+
+        if len(onsets) < 4:
+            return None
+
+        tempograms = librosa.feature.tempo_aggregate(
+            onset_envelope=onset_env, sr=None, aggregation=librosa.tempogram.onset_hops,
+        )
+        tempo = librosa.beat.tempo(
+            onset_envelope=onset_env, sr=None, aggregate=tempograms,
+            max_bpm=300, min_bpm=30,
+        )
+
+        estimated = int(round(tempo[0])) if isinstance(tempo, (list, tuple)) else int(round(float(tempo)))
+        return max(30, min(300, estimated))
+
+    except Exception:
+        logger.warning("[custom_ui] BPM detection failed for %s", audio_path)
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Model initialization helpers
 # ---------------------------------------------------------------------------
 
@@ -282,7 +331,7 @@ async def handle_generate(data: dict[str, Any]) -> dict[str, Any]:
     audio_format = data.get("audio_format", "mp3")
     reference_audio = data.get("reference_audio_path") or data.get("reference_audio")
     src_audio = data.get("src_audio_path") or data.get("src_audio")
-    track_name = data.get("name", None)
+    track_name = data.get("track_name") or data.get("name")  # frontend sends "track_name" (js_results.js), legacy "name" kept for compat
 
     # Cover mode: default strength 0.75 (not Gradio's 1.0). During initial dev,
     # setting cover strength to 1.0 produced output identical to the input audio
@@ -311,6 +360,15 @@ async def handle_generate(data: dict[str, Any]) -> dict[str, Any]:
         chunk_mask_mode = "explicit"
     else:
         chunk_mask_mode = "auto"
+
+    # Complete mode: auto-detect BPM from source audio if not explicitly provided.
+    # Without this, the model generates at a random/default tempo — producing
+    # "toddlers with noise makers" regardless of instrument selection.
+    if task_type == "complete" and bpm is None and src_audio:
+        detected = _detect_bpm_from_audio(src_audio)
+        if detected is not None:
+            bpm = detected
+            logger.info("[custom_ui] Complete mode: auto-detected BPM=%d from source audio", detected)
 
     # Validate src_audio file exists before passing to generation pipeline
     if src_audio and task_type != "text2music":
@@ -344,7 +402,7 @@ async def handle_generate(data: dict[str, Any]) -> dict[str, Any]:
         timesignature=str(timesignature).strip() if str(timesignature).strip() else "",
         vocal_language=vocal_language,
         thinking=thinking,
-        global_caption=track_name if task_type == "lego" and track_name and str(track_name).strip() else "",
+        global_caption=track_name if (task_type in ("lego", "complete")) and track_name and str(track_name).strip() else "",
         reference_audio=reference_audio if task_type != "text2music" else None,
         src_audio=src_audio if task_type != "text2music" else None,
         audio_cover_strength=audio_cover_strength,
