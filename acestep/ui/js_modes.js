@@ -75,10 +75,17 @@ function renderModePills() {
     for (const mode of MODES) {
         const btn = document.createElement("button");
         btn.className = "mode-pill" + (mode === currentMode ? " active" : "");
-        if (mode === "Complete") btn.classList.add("mode-pill-complete");
+        if (mode === "Complete") btn.classList.add("pill-disabled");
+        if (mode === "Sound Stack") btn.classList.add("pill-disabled");
+        if (mode === "Inspiration") btn.classList.add("pill-hidden");
         btn.textContent = mode;
 
         if (MODE_TITLES[mode]) btn.title = MODE_TITLES[mode];
+
+        // Sound Stack mode dimmed — known upstream issues with this mode.
+        if (mode === "Sound Stack") {
+            btn.title += "\n\n⚠ Currently unavailable due to upstream issues.";
+        }
 
         // Dim Complete pill when base model is not selected.
         if (mode === "Complete" && !isBase) {
@@ -232,10 +239,12 @@ function onLyricsInput() {
 function updateVisibility() {
     // Lyrics: shown for all modes except Inspiration and Sound Stack (per Gradio design)
     const showLyrics = currentMode !== "Inspiration" && currentMode !== "Sound Stack" && currentMode !== "Complete";
-    const showSrcAudio = ["Cover", "Edit", "Inspiration", "Sound Stack", "Complete"].includes(currentMode);
+    const showSrcAudio = ["Cover", "Edit", "Advanced", "Inspiration", "Sound Stack", "Complete"].includes(currentMode);
     const showRefAudio = ["Cover", "Edit", "Sound Stack"].includes(currentMode);
     const showCoverControls = currentMode === "Cover";
-    const showInspirationControls = currentMode === "Inspiration";
+    // Inspiration controls: shown in Inspiration mode, or Advanced mode when source audio is uploaded
+    const hasSrcAudio = document.getElementById("src-audio")?.files?.length > 0;
+    const showInspirationControls = currentMode === "Inspiration" || (currentMode === "Advanced" && hasSrcAudio);
     const showCustom = currentMode === "Advanced" || currentMode === "Inspiration";
     const showEdit = currentMode === "Edit" || currentMode === "Sound Stack";
     const showTrackSelect = currentMode === "Inspiration" || currentMode === "Sound Stack" || currentMode === "Complete";
@@ -251,8 +260,9 @@ function updateVisibility() {
     document.getElementById("repaint-controls-field").classList.toggle("hidden", !showEdit);
     document.getElementById("track-select-field").classList.toggle("hidden", !showTrackSelect);
 
-    // Interpret button: only visible in Inspiration mode
-    document.getElementById("interpret-btn").classList.toggle("hidden", currentMode !== "Inspiration");
+    // Interpret button: visible wherever caption/lyrics are (i.e. not in Inspiration/Sound Stack/Complete)
+    const showInterpret = currentMode !== "Inspiration" && currentMode !== "Sound Stack" && currentMode !== "Complete";
+    document.getElementById("interpret-btn").classList.toggle("hidden", !showInterpret);
 
     // Hide thinking toggle in Cover mode (LLM never invoked for Cover)
     const thinkingRow = document.getElementById("thinking-row");
@@ -756,4 +766,13 @@ async function downloadLMModel(modelName, btnEl) {
         alert("Download failed: " + e.message);
     }
 }
+
+// ── Re-trigger visibility when source audio files change (Advanced mode) ────────────
+(function() {
+    const srcAudio = document.getElementById("src-audio");
+    if (!srcAudio) return;
+    srcAudio.addEventListener("change", () => {
+        if (currentMode === "Advanced") updateVisibility();
+    });
+})();
 

@@ -327,6 +327,12 @@ async function doGenerate() {
             if (preset && preset !== "detailed") body.inspiration_preset = preset;
         }
 
+        // Advanced mode with source audio → use default inspiration strength/preset
+        if (currentMode === "Advanced" && srcAudioPath) {
+            body.audio_cover_strength = parseFloat(document.getElementById("inspiration_strength").value);
+            body.inspiration_preset = document.getElementById("inspiration_style")?.value || "detailed";
+        }
+
         // Edit/Sound Stack-mode specific params
         if (currentMode === "Edit" || currentMode === "Sound Stack") {
             body.repainting_start = parseFloat(document.getElementById("repainting_start").value) || 0;
